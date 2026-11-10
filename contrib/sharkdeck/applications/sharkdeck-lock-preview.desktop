@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Preview Lock Animation
+Comment=Preview real cmatrix and the Orthodox cross; any key closes
+Exec=@HOME@/.local/bin/sharkdeck-lock-theme --preview
+Icon=preferences-desktop-screensaver
+Terminal=false
+Categories=Settings;DesktopSettings;
+Keywords=matrix;rain;lock;theme;preview;

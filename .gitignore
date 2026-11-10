@@ -30,3 +30,6 @@ cmatrix.exe
 *.core
 CMakeCache.txt
 CMakeFiles/
+
+__pycache__/
+*.pyc

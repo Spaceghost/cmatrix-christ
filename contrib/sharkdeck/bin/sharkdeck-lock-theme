@@ -1,0 +1,31 @@
+#!/usr/bin/python3
+"""Pick a lock-screen theme, or synchronize its palette before locking."""
+import argparse
+from pathlib import Path
+import subprocess
+import sys
+
+sys.path.insert(0, str(Path.home() / '.local/lib'))
+from sharkdeck_lock_theme import THEMES, selected, sync
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--sync', action='store_true')
+parser.add_argument('--set', choices=THEMES)
+parser.add_argument('--preview', action='store_true')
+args = parser.parse_args()
+if args.sync or args.set:
+    sync(args.set)
+elif not args.preview:
+    current = selected()
+    rows = {theme['name'] + ('  ✓' if key == current else ''): key
+            for key, theme in THEMES.items()}
+    result = subprocess.run(
+        ['fuzzel', '--dmenu', '--only-match', '--prompt', 'Lock theme > ',
+         '--width', '30', '--lines', str(len(rows)),
+         '--mesg', 'Choose a theme · applies to the next lock'],
+        input='\n'.join(rows), text=True, capture_output=True)
+    choice = result.stdout.rstrip('\n')
+    if result.returncode == 0 and choice in rows:
+        sync(rows[choice])
+if args.preview:
+    subprocess.run([str(Path.home() / '.local/bin/sharkdeck-matrix-rain'), '--preview'], check=True)

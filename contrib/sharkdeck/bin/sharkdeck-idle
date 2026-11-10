@@ -1,0 +1,22 @@
+#!/usr/bin/python3
+"""One event-driven Matrix lock manager per Sway session."""
+import fcntl
+import hashlib
+import os
+from pathlib import Path
+import subprocess
+
+runtime = Path(os.environ['XDG_RUNTIME_DIR'])
+tag = hashlib.sha256(os.environ['SWAYSOCK'].encode()).hexdigest()[:12]
+with (runtime / ('sharkdeck-idle-' + tag + '.lock')).open('w') as lock:
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        raise SystemExit(0)
+    # Keep the lock in this parent. It is not inherited by event commands.
+    # swayidle observes the compositor's idle inhibitors (e.g. video playback).
+    # The SPI panel can leave a stale frame after output-power changes.
+    # Keep it powered and show a password-protected animation instead.
+    locker = str(Path.home() / '.local/bin/sharkdeck-lock')
+    subprocess.run(['swayidle', '-w', 'timeout', '600', locker,
+                    'lock', locker, 'before-sleep', locker], check=True)

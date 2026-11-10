@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <locale.h>
+#include <math.h>
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -782,7 +783,8 @@ if (console) {
                     } else if (matrix[i][j].val == -1) {
                         addch(' ');
                     } else {
-                        addch(matrix[i][j].val);
+                        wchar_t head_glyph[2] = {matrix[i][j].val, 0};
+                        addwstr(head_glyph);
                     }
 
                     attroff(COLOR_PAIR(COLOR_WHITE));
@@ -888,6 +890,72 @@ if (console) {
                 addch(' ');
         }
 
+        /* The cross, nimbus and filigree are all terminal code, not an image.
+         * Richer detail follows the terminal grid at any output resolution. */
+        if (getenv("CMATRIX_CROSS") != NULL && LINES >= 10 && COLS >= 20) {
+            static unsigned cross_frame = 0;
+            int height = LINES * 4 / 5;
+            int top = (LINES - height) / 2;
+            int center = COLS / 2;
+            int arm_row = top + height / 3;
+            int arm_half = height * 4 / 5;
+            if (arm_half > COLS / 3) arm_half = COLS / 3;
+            int stem_half = COLS / 32;
+            if (stem_half < 1) stem_half = 1;
+            int beam_half = height / 18;
+            if (beam_half < 1) beam_half = 1;
+            int flare = stem_half / 2;
+            if (flare < 1) flare = 1;
+            double radius = height * 0.32;
+            ++cross_frame;
+            for (int row = 0; row < LINES; ++row) {
+                for (int col = 0; col < COLS; ++col) {
+                    int x = col - center;
+                    int y = row - top;
+                    int dx = abs(x);
+                    bool stem = y >= 0 && y < height && dx <= stem_half;
+                    bool beam = abs(row - arm_row) <= beam_half && dx <= arm_half;
+                    /* Modest flared terminals preserve the traditional silhouette. */
+                    bool finial = (y == 1 || y == height - 2) && dx <= stem_half + flare;
+                    bool arm_finial = dx >= arm_half - 1 && dx <= arm_half &&
+                                      abs(row - arm_row) <= beam_half + 1;
+                    bool body = stem || beam || finial || arm_finial;
+                    double sx = x / 2.0;
+                    double sy = row - arm_row;
+                    double distance = sqrt(sx * sx + sy * sy);
+                    bool halo = fabs(distance - radius) < 0.24 ||
+                                fabs(distance - radius - 0.85) < 0.18;
+                    /* A quiet radiating edge and pearls around the nimbus. */
+                    bool pearl = fabs(distance - radius - 1.65) < 0.28 &&
+                                 (abs(x + row * 2) % 7 == 0);
+                    bool glow = y >= 0 && y < height && dx == stem_half + 1;
+                    if (!body && !halo && !pearl && !glow) continue;
+                    unsigned seed = row * 97u + col * 53u;
+                    unsigned phase = cross_frame / 10u;
+                    wchar_t glyph[2] = {randmin + ((seed + phase) * 17u) % randnum, 0};
+                    int pair = COLOR_BLUE;
+                    int weight = A_NORMAL;
+                    if (body) {
+                        bool edge = dx == stem_half || abs(row - arm_row) == beam_half;
+                        pair = edge ? COLOR_CYAN : COLOR_YELLOW;
+                        weight = A_BOLD;
+                        /* A restrained moving glint, rather than random flashing. */
+                        if ((seed + phase) % 31u == 0) pair = COLOR_WHITE;
+                    } else if (pearl) {
+                        pair = COLOR_MAGENTA;
+                        glyph[0] = 0xff65;
+                    } else if (glow) {
+                        pair = COLOR_BLUE;
+                    } else {
+                        pair = ((col + row) % 4 == 0) ? COLOR_MAGENTA : COLOR_BLUE;
+                    }
+                    attrset(weight | COLOR_PAIR(pair));
+                    move(row, col);
+                    addwstr(glyph);
+                }
+            }
+            attrset(A_NORMAL);
+        }
         napms(update * 10);
     }
     finish();

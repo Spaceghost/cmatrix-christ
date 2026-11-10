@@ -1,6 +1,6 @@
 # CMake build system for CMatrix
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
 
 project(CMatrix LANGUAGES C)
 set(VERSION "2.0")
@@ -58,7 +58,7 @@ include_directories(${CURSES_INCLUDE_DIR})
 add_definitions(-DHAVE_NCURSES_H)
 
 include(CheckSymbolExists)
-list(APPEND CMAKE_REQUIRED_LIBRARIES ncurses)
+list(APPEND CMAKE_REQUIRED_LIBRARIES ${CURSES_LIBRARIES})
 check_symbol_exists(use_default_colors "ncurses.h" HAVE_USE_DEFAULT_COLORS)
 if (HAVE_USE_DEFAULT_COLORS)
     add_definitions(-DHAVE_USE_DEFAULT_COLORS)
@@ -67,6 +67,9 @@ endif()
 add_executable(cmatrix cmatrix.c)
 
 target_link_libraries(cmatrix ${CURSES_LIBRARIES})
+if(UNIX)
+    target_link_libraries(cmatrix m)
+endif()
 
 install(TARGETS cmatrix DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES cmatrix.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)

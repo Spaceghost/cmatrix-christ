@@ -1,0 +1,15 @@
+#!/bin/sh
+# Daemonize only after the compositor confirms that the session is locked.
+set -eu
+export PATH="$HOME/.local/bin:/usr/bin:/bin"
+state="$HOME/.local/state/sharkdeck-lock"
+mkdir -p "$state"
+if ! "$HOME/.local/bin/sharkdeck-lock-theme" --sync; then
+    exec /usr/bin/swaylock -f --indicator-idle-visible
+fi
+if ! swaylock-plugin --config "$HOME/.config/swaylock/matrix.conf" \
+    --daemonize --indicator-idle-visible \
+    --command-each "$HOME/.local/bin/sharkdeck-matrix" \
+    >> "$state/lock.log" 2>&1; then
+    exec /usr/bin/swaylock -f --indicator-idle-visible --config "$HOME/.config/swaylock/matrix.conf"
+fi

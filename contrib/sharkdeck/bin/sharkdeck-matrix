@@ -1,0 +1,6 @@
+#!/bin/sh
+# The background has no keyboard focus; only the locker receives passwords.
+set -eu
+export PATH="$HOME/.local/bin:/usr/bin:/bin"
+exec windowtolayer --dummy-seat --anchor top,bottom,left,right --size 0x0 --maximized -- \
+    "$HOME/.local/bin/sharkdeck-matrix-rain" --embedded

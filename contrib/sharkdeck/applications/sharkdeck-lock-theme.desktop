@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Lock Screen Themes
+Comment=Choose Matrix Movie, Purple and Blue, or Gruvbox Dark
+Exec=@HOME@/.local/bin/sharkdeck-lock-theme
+Icon=preferences-desktop-theme
+Terminal=false
+Categories=Settings;DesktopSettings;
+Keywords=matrix;movie;rain;lock;theme;purple;blue;gruvbox;

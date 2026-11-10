@@ -1,0 +1,77 @@
+#!/usr/bin/python3
+"""Real cmatrix, including its integrated traditional code cross."""
+import argparse
+import os
+from pathlib import Path
+import sys
+
+os.environ['NO_AT_BRIDGE'] = '1'
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('Gdk', '3.0')
+gi.require_version('Vte', '2.91')
+from gi.repository import Gdk, GLib, Gtk, Pango, Vte
+
+sys.path.insert(0, str(Path.home() / '.local/lib'))
+from sharkdeck_lock_theme import THEMES, selected
+
+
+def color(hexadecimal):
+    value = Gdk.RGBA()
+    value.parse('#' + hexadecimal)
+    return value
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--preview', action='store_true')
+    parser.add_argument('--embedded', action='store_true')
+    parser.add_argument('--theme', choices=THEMES)
+    args = parser.parse_args()
+    theme = THEMES[args.theme or selected()]
+    window = Gtk.Window(title=theme['name'] + ' · CMatrix preview')
+    window.set_default_size(480, 320)
+    if args.embedded:
+        window.set_decorated(False)
+    terminal = Vte.Terminal()
+    # A finer terminal grid adds detail at the panel's native pixel resolution.
+    terminal.set_font(Pango.FontDescription('IPAGothic 8'))
+    terminal.set_scrollback_lines(0)
+    terminal.set_input_enabled(False)
+    terminal.set_cursor_blink_mode(Vte.CursorBlinkMode.OFF)
+    terminal.set_mouse_autohide(True)
+    palette = ['000000', '17281c', theme['rain'][3], 'd7ac53',
+               '57411f', '94743c', 'e2bb67', theme['rain'][5],
+               '555555', '294334', theme['rain'][4], 'fff0b6',
+               '70562a', 'b79552', 'f2d58c', 'faffef']
+    terminal.set_colors(color(theme['text']), color(theme['background']), [color(c) for c in palette])
+    window.add(terminal)
+    window.connect('destroy', Gtk.main_quit)
+    terminal.connect('child-exited', lambda *_: window.destroy())
+    if args.preview:
+        def keypress(widget, event):
+            if event.keyval in (Gdk.KEY_Escape, Gdk.KEY_q):
+                window.destroy()
+                return True
+            return False
+        window.connect('key-press-event', keypress)
+        terminal.connect('key-press-event', keypress)
+    window.show_all()
+
+    def spawned(term, pid, error, data):
+        if error:
+            print('Cannot start cmatrix:', error, file=sys.stderr)
+            window.destroy()
+
+    # -c: native half-width Japanese kana; -a: independent stream speeds.
+    # The surrounding swaylock handles passwords; cmatrix receives no input.
+    terminal.spawn_async(pty_flags=Vte.PtyFlags.DEFAULT, working_directory=str(Path.home()),
+                         argv=[str(Path.home() / '.local/bin/cmatrix'), '-a', '-b', '-c', '-u', '2', '-C', 'green'],
+                         envv=['TERM=xterm-256color', 'LANG=C.UTF-8', 'LC_ALL=C.UTF-8', 'CMATRIX_CROSS=1'],
+                         spawn_flags=GLib.SpawnFlags.DEFAULT, child_setup=None,
+                         timeout=10000, cancellable=None, callback=spawned, user_data=None)
+    Gtk.main()
+
+
+if __name__ == '__main__':
+    main()
