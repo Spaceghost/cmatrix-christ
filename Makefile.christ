@@ -4,7 +4,7 @@ CFLAGS ?= -O2 -Wall -Wextra
 CPPFLAGS += -DEXCLUDE_CONFIG_H -DHAVE_GETOPT_H -DHAVE_NCURSES_H \
  -DHAVE_SYS_IOCTL_H -DHAVE_UNISTD_H -DHAVE_TERMIOS_H \
  -DHAVE_USE_DEFAULT_COLORS -DHAVE_RESIZETERM -DHAVE_WRESIZE \
- -DVERSION='"cmmatrix-christ"'
+ -DVERSION='"cmatrix-christ"'
 CURSES_CFLAGS := $(shell pkg-config --cflags ncursesw)
 CURSES_LIBS := $(shell pkg-config --libs ncursesw)
 

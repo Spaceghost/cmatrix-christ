@@ -1,4 +1,4 @@
-# cmmatrix-christ
+# cmatrix-christ
 
 A fork of [CMatrix](https://github.com/abishekvashok/cmatrix) with a traditional
 Christian cross formed from live Japanese code. The cross, gold edges, double
