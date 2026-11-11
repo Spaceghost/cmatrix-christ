@@ -1,19 +1,35 @@
 # Lightweight Unix build; upstream Autotools and CMake builds remain available.
 CC ?= cc
+CXX ?= c++
 CFLAGS ?= -O2 -Wall -Wextra
+CXXFLAGS ?= -O3 -Wall -Wextra -Wpedantic
+BUILD_DIR ?= build
 CPPFLAGS += -DEXCLUDE_CONFIG_H -DHAVE_GETOPT_H -DHAVE_NCURSES_H \
  -DHAVE_SYS_IOCTL_H -DHAVE_UNISTD_H -DHAVE_TERMIOS_H \
  -DHAVE_USE_DEFAULT_COLORS -DHAVE_RESIZETERM -DHAVE_WRESIZE \
  -DVERSION='"cmatrix-christ"'
-CURSES_CFLAGS := $(shell pkg-config --cflags ncursesw)
-CURSES_LIBS := $(shell pkg-config --libs ncursesw)
+CURSES_CFLAGS = $(shell pkg-config --cflags ncursesw)
+CURSES_LIBS = $(shell pkg-config --libs ncursesw)
 
-.PHONY: all test
-all: build/cmatrix
+.PHONY: all neo test test-neo
+all: $(BUILD_DIR)/cmatrix $(BUILD_DIR)/neo-christ
+neo: $(BUILD_DIR)/neo-christ
 
-build/cmatrix: cmatrix.c
-	mkdir -p build
+$(BUILD_DIR)/cmatrix: cmatrix.c
+	mkdir -p $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(CURSES_CFLAGS) $< $(LDFLAGS) $(CURSES_LIBS) -lm -o $@
 
-test: build/cmatrix
-	python3 tests/test_cross_pty.py build/cmatrix
+$(BUILD_DIR)/neo-christ: neo_christ/main.cpp neo_christ/renderer.cpp neo_christ/renderer.hpp
+	mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -std=c++17 neo_christ/main.cpp neo_christ/renderer.cpp $(LDFLAGS) -o $@
+
+$(BUILD_DIR)/test-neo-renderer: tests/test_neo_renderer.cpp neo_christ/renderer.cpp neo_christ/renderer.hpp
+	mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -std=c++17 -Ineo_christ tests/test_neo_renderer.cpp neo_christ/renderer.cpp $(LDFLAGS) -o $@
+
+test-neo: $(BUILD_DIR)/test-neo-renderer
+	$(BUILD_DIR)/test-neo-renderer
+
+test: all test-neo
+	python3 tests/test_cross_pty.py $(BUILD_DIR)/cmatrix
+	python3 tests/test_neo_pty.py $(BUILD_DIR)/neo-christ

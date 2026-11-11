@@ -74,6 +74,18 @@ endif()
 install(TARGETS cmatrix DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES cmatrix.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
+# The rotating rendition needs only a C++17 compiler and POSIX terminal APIs.
+# Native Windows retains the upstream cmatrix target.
+if(UNIX)
+    option(BUILD_NEO_CHRIST "Build the rotating true-color cross" ON)
+    if(BUILD_NEO_CHRIST)
+        enable_language(CXX)
+        add_executable(neo-christ neo_christ/main.cpp neo_christ/renderer.cpp)
+        target_compile_features(neo-christ PRIVATE cxx_std_17)
+        install(TARGETS neo-christ DESTINATION ${CMAKE_INSTALL_BINDIR})
+    endif()
+endif()
+
 if     (UNIX)
 	foreach    (CONSOLE_FONTS_DIR ${CONSOLE_FONTS_DIRS})
 		if     (IS_DIRECTORY "${CMAKE_INSTALL_PREFIX}/${CONSOLE_FONTS_DIR}")

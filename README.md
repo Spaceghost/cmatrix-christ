@@ -1,5 +1,64 @@
 # cmatrix-christ
 
+A Christian cross in two terminal renditions: the original living-code cross,
+and **Lux Crucis**, a slowly rotating, sculpted cross inspired by
+[st3w/neo](https://github.com/st3w/neo).
+
+## Lux Crucis — the rotating rendition
+
+![Lux Crucis: a beveled gold cross above quiet Japanese digital rain](docs/neo-christ.png)
+
+[Watch a full 36-second rotation](docs/neo-christ.mp4) (30 fps recording of the
+same terminal cells; the live program defaults to a 60 fps limit).
+
+Warm gold, engraved code, a double nimbus and independent Japanese rain streams.
+The Latin cross stays upright as it completes a turn every 36 seconds. Its front,
+back and beveled sides are actual 3D geometry, rendered in the terminal with
+true-color Unicode half blocks and four samples per pixel. Light travels across
+the surface as it turns; rotation follows a monotonic clock rather than frame
+counts. No GPU, image protocol or downloaded assets are required.
+
+Build and run on Linux or another POSIX system with a C++17 compiler and make:
+
+```sh
+make -f Makefile.christ neo
+./build/neo-christ
+```
+
+Use a UTF-8 locale, a font with half-width Japanese kana, and a terminal with
+true-color support. Color support is selected from `COLORTERM` and `TERM`;
+`--color truecolor` overrides detection. Smaller terminal text gives more detail.
+The default limit is 60 fps; actual throughput depends on the terminal, grid size
+and CPU. `--quality low --fps 30` reduces work on small machines.
+
+| Key | Action |
+| --- | --- |
+| Space | Pause or resume |
+| `+` / `-` | Faster / slower rotation and rain |
+| `t` | Gold, Matrix green, or ivory palette |
+| `r` / `h` | Toggle rain / title and hints |
+| `q` / Escape | Exit and restore the terminal |
+
+Ctrl-C, termination signals, window resizing and Ctrl-Z/resume are supported.
+Frames update only changed cells; terminals with synchronized-output support
+present each frame together. ASCII, 256-color and monochrome fallbacks are available.
+`NO_COLOR` selects monochrome ASCII; a non-UTF-8 locale selects ASCII automatically.
+
+```sh
+./build/neo-christ --theme ivory --no-rain --quiet
+./build/neo-christ --period 48 --color truecolor
+./build/neo-christ --ascii --color 256
+./build/neo-christ --export cross.svg --size 180x64 --at 4
+./build/neo-christ --help
+```
+
+SVG export uses the same rendered cells as the live animation and works without a
+TTY. `--aspect` adjusts for fonts whose cell width/height differs from 0.5.
+The backdrop cache is bounded by the terminal grid; no animation history is kept.
+For a smaller device, `--size 80x26 --quality low --fps 30` limits the drawing area.
+
+## First rendition — the original code cross
+
 A fork of [CMatrix](https://github.com/abishekvashok/cmatrix) with a traditional
 Christian cross formed from live Japanese code. The cross, gold edges, double
 nimbus, flared terminals and moving glints are drawn by ncurses itself. Normal
@@ -7,13 +66,15 @@ CMatrix behavior remains available when `CMATRIX_CROSS` is unset.
 
 ![Code cross with Matrix rain](docs/cmatrix-christ.png)
 
-## Build and run this fork
+### Build both renditions
 
-Install a C compiler, make, pkg-config and the wide-character ncurses development
+Install C and C++17 compilers, make, pkg-config and the wide-character ncurses development
 package. The optional smoke tests also require Python 3.
 
 ```sh
 make -f Makefile.christ
+./build/neo-christ --first-rendition
+# Equivalent original command:
 CMATRIX_CROSS=1 ./build/cmatrix -a -b -c -u 2 -C green
 make -f Makefile.christ test
 ```
@@ -27,6 +88,13 @@ colors; the optional Wayland integration supplies the gold and theme palettes.
 The code cross scales with terminal geometry. More pixels on a larger output allow
 a finer code grid; the built-in Sharkdeck panel remains at its native 480×320.
 The capture above was rendered separately at 1440×960.
+
+`make -f Makefile.christ test` exercises both programs in real PTYs, including
+pause, resize, overloaded rendering, clean exits, suspend/resume, color and locale
+fallbacks. Renderer checks cover deterministic frames, depth and motion continuity.
+Build outputs default to `build/`; set `BUILD_DIR` to use another directory.
+CMake also builds both programs on POSIX systems; upstream Autotools builds the
+original CMatrix program.
 
 ## Optional Sway lock screen and theme picker
 
@@ -81,8 +149,12 @@ handled only by the surrounding locker.
 ## License and upstream
 
 GPL-3.0-or-later, as in upstream CMatrix. Original copyright notices and `COPYING`
-are retained. The upstream README follows for the original build systems and
-terminal controls.
+are retained. Lux Crucis is an original renderer inspired by Stewart Reive's
+[neo](https://github.com/st3w/neo), especially its graded asynchronous rain,
+half-width kana and true-color treatment; it does not embed neo's source.
+The first rendition is preserved in `cmatrix.c` and remains the default for the
+existing Sharkdeck integration. The upstream README follows for the original
+build systems and terminal controls.
 
 ---
 
