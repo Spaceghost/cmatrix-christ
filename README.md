@@ -1,22 +1,29 @@
 # cmatrix-christ
 
 A Christian cross in two terminal renditions: the original living-code cross,
-and **Lux Crucis**, a slowly rotating, sculpted cross inspired by
+and **Lux Crucis**, a slowly rotating, ornate filigree cross inspired by
 [st3w/neo](https://github.com/st3w/neo).
 
 ## Lux Crucis — the rotating rendition
 
-![Lux Crucis: a beveled gold cross above quiet Japanese digital rain](docs/neo-christ.png)
+![Lux Crucis: open gold filigree, fleur-de-lis terminals, pearls and ruby settings](docs/neo-christ.png)
 
 [Watch a full 36-second rotation](docs/neo-christ.mp4) (30 fps recording of the
 same terminal cells; the live program defaults to a 60 fps limit).
 
-Warm gold, engraved code, a double nimbus and independent Japanese rain streams.
-The Latin cross stays upright as it completes a turn every 36 seconds. Its front,
-back and beveled sides are actual 3D geometry, rendered in the terminal with
-true-color Unicode half blocks and four samples per pixel. Light travels across
-the surface as it turns; rotation follows a monotonic clock rather than frame
-counts. No GPU, image protocol or downloaded assets are required.
+Open gold filigree, fleur-de-lis terminals, curling acanthus leaves, braided
+strands, pearl beadwork and ruby cabochons around an eight-lobed central rosette.
+Fine concentric rings, scallops and rays form the nimbus behind it. Independent
+Japanese rain streams remain quiet around the ornament.
+
+The Latin cross stays upright as it completes a turn every 36 seconds. Every
+scroll, strand and setting is actual 3D geometry and turns with the cross.
+Analytic ray intersections and a depth buffer preserve the openings and order
+overlapping strands. Unicode Braille supplies eight fine dots per terminal cell,
+with four samples per dot at high quality. There are no opaque beam faces.
+Light follows the curved gold and the facets of the stones; rotation follows a
+monotonic clock rather than frame counts. No GPU, image protocol or downloaded
+assets are required.
 
 Build and run on Linux or another POSIX system with a C++17 compiler and make:
 
@@ -25,7 +32,7 @@ make -f Makefile.christ neo
 ./build/neo-christ
 ```
 
-Use a UTF-8 locale, a font with half-width Japanese kana, and a terminal with
+Use a UTF-8 locale, a font with Braille and half-width Japanese kana, and a terminal with
 true-color support. Color support is selected from `COLORTERM` and `TERM`;
 `--color truecolor` overrides detection. Smaller terminal text gives more detail.
 The default limit is 60 fps; actual throughput depends on the terminal, grid size
@@ -53,8 +60,9 @@ present each frame together. ASCII, 256-color and monochrome fallbacks are avail
 ```
 
 SVG export uses the same rendered cells as the live animation and works without a
-TTY. `--aspect` adjusts for fonts whose cell width/height differs from 0.5.
-The backdrop cache is bounded by the terminal grid; no animation history is kept.
+TTY. Braille masks are exported as vector dots so their detail does not depend on
+the viewer's fonts. `--aspect` adjusts for cell width/height ratios other than 0.5.
+The rendering buffer is bounded by the terminal grid; no animation history is kept.
 For a smaller device, `--size 80x26 --quality low --fps 30` limits the drawing area.
 
 ## First rendition — the original code cross
@@ -91,7 +99,8 @@ The capture above was rendered separately at 1440×960.
 
 `make -f Makefile.christ test` exercises both programs in real PTYs, including
 pause, resize, overloaded rendering, clean exits, suspend/resume, color and locale
-fallbacks. Renderer checks cover deterministic frames, depth and motion continuity.
+fallbacks. Renderer checks cover deterministic frames, depth, motion continuity
+and open spaces in the filigree.
 Build outputs default to `build/`; set `BUILD_DIR` to use another directory.
 CMake also builds both programs on POSIX systems; upstream Autotools builds the
 original CMatrix program.

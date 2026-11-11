@@ -11,7 +11,7 @@ struct RGB {
 };
 struct Cell {
     RGB top, bottom, ink;
-    char32_t glyph = 0; // Zero means two independently shaded half-block pixels.
+    char32_t glyph = 0; // Braille for openwork; kana for rain; ASCII fallback.
     bool operator==(const Cell& v) const {
         return top == v.top && bottom == v.bottom && ink == v.ink && glyph == v.glyph;
     }
@@ -24,7 +24,7 @@ struct Settings {
     bool rain = true;
     bool unicode = true;
     bool caption = true;
-    int samples = 2; // Samples per axis, per half-cell pixel.
+    int samples = 2; // Samples per axis, per Braille dot (eight dots per cell).
 };
 struct Frame {
     int columns, rows;

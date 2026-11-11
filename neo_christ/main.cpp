@@ -71,7 +71,7 @@ struct Options {
     std::string output;
 };
 const char* help=R"(neo-christ — Lux Crucis
-A slowly rotating, beveled code cross in true color.
+A slowly rotating, ornate filigree cross in true color.
 
 Usage: neo-christ [options]
        neo-christ --first-rendition
@@ -80,7 +80,7 @@ Usage: neo-christ [options]
   --theme gold|matrix|ivory   Gold by default
   --period SECONDS           Seconds per revolution (4–600; default 36)
   --fps N                    Frame limit (1–120; default 60)
-  --quality high|low         4 or 1 samples per half-cell pixel
+  --quality high|low         4 or 1 samples per Braille dot
   --color auto|truecolor|256|mono
   --ascii                    Use ASCII shading and rain
   --aspect RATIO             Cell width / height (0.25–1; default 0.5)
@@ -96,7 +96,7 @@ Usage: neo-christ [options]
 
 Keys: space pause/resume · +/- speed · t palette · r rain · h hints · q/Esc quit
 Ctrl-C exits cleanly. Ctrl-Z suspends and restores the terminal until resumed.
-Use a UTF-8 terminal with a Japanese font for half-width kana. Non-UTF-8
+Use a UTF-8 terminal with Braille and half-width Japanese kana support. Non-UTF-8
 locales and NO_COLOR automatically use ASCII. No GPU or font download needed.
 
 Inspired by st3w/neo and Spaceghost/cmatrix-christ. GPL-3.0-or-later.
@@ -123,7 +123,7 @@ Options parse(int argc,char** argv) {
         std::string arg=argv[i];
         auto value=[&](){if(i+1>=argc)throw std::runtime_error(arg+": missing value");return std::string(argv[++i]);};
         if (arg=="--help" || arg=="-h") {std::cout<<help;std::exit(0);}
-        else if (arg=="--version") {std::cout<<"neo-christ 0.1.0 (Lux Crucis)\n";std::exit(0);}
+        else if (arg=="--version") {std::cout<<"neo-christ 0.2.0 (Lux Crucis — Filigree)\n";std::exit(0);}
         else if (arg=="--period") o.settings.period=number(value(),4,600,arg);
         else if (arg=="--fps") o.fps=integer(value(),1,120,arg);
         else if (arg=="--frames") o.frames=integer(value(),1,10000000,arg);

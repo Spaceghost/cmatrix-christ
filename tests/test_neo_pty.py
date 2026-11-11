@@ -37,6 +37,7 @@ with tempfile.TemporaryDirectory(prefix='neo-christ-') as directory:
         cols, rows = map(int, size.split('x'))
         assert float(root.attrib['width']) == cols * 8
         assert float(root.attrib['height']) == rows * 16
+        assert root.findall('{http://www.w3.org/2000/svg}circle'), 'filigree export must be visible without Braille fonts'
     assert command('--export', directory).returncode == 1, 'write failures must be reported'
 
 
@@ -88,7 +89,7 @@ session = Session()
 try:
     session.read(0.4)
     assert b'\x1b[38;2;' in session.output, 'true color missing'
-    assert '▀'.encode() in session.output, 'subcell rendering missing'
+    assert any('\u2801' <= c <= '\u28ff' for c in session.output.decode('utf-8')), 'fine Braille rendering missing'
     session.send(b' ')
     session.read(0.2)
     assert not session.read(0.2), 'paused animation should remain still'
