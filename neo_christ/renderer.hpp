@@ -11,24 +11,27 @@ struct RGB {
 };
 struct Cell {
     RGB top, bottom, ink;
-    char32_t glyph = 0; // Braille for openwork; kana for rain; ASCII fallback.
+    char32_t glyph = 0; // Quadrants for wood, Braille for filigree, kana for rain.
     bool operator==(const Cell& v) const {
         return top == v.top && bottom == v.bottom && ink == v.ink && glyph == v.glyph;
     }
 };
 enum class Theme { gold, matrix, ivory };
+enum class Style { calvary, ornate };
 struct Settings {
+    Style style = Style::calvary;
     Theme theme = Theme::gold;
     double period = 36.0;
     double aspect = 0.5; // Terminal cell width / height.
-    bool rain = true;
+    bool rain = false;
     bool unicode = true;
     bool caption = true;
-    int samples = 2; // Samples per axis, per Braille dot (eight dots per cell).
+    int samples = 2; // Samples per axis, per quadrant pixel or Braille dot.
 };
 struct Frame {
     int columns, rows;
     std::vector<Cell> cells;
+    Style style = Style::calvary;
 };
 Frame render(int columns, int rows, double seconds, const Settings& settings);
 std::string utf8(char32_t codepoint);

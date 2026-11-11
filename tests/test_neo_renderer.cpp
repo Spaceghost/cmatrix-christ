@@ -13,7 +13,10 @@ int silhouetteWidth(const christ::Frame& f) {
         int left=f.columns,right=-1;
         for(int x=0;x<f.columns;++x) {
             const auto& cell=f.cells[static_cast<size_t>(y)*f.columns+x];
-            if(cell.glyph>=0x2801 && cell.glyph<=0x28ff && cell.ink.r>185 && cell.ink.g>135) {
+            bool visible=f.style==christ::Style::calvary?
+                std::max(cell.ink.r,cell.bottom.r)>80:
+                cell.glyph>=0x2801 && cell.glyph<=0x28ff && cell.ink.r>185 && cell.ink.g>135;
+            if(visible) {
                 left=std::min(left,x);right=x;
             }
         }
@@ -23,6 +26,7 @@ int silhouetteWidth(const christ::Frame& f) {
 }
 int main() {
     christ::Settings s;
+    s.style=christ::Style::ornate;
     s.rain=false;s.caption=false;
     auto front=christ::render(120,45,0,s);
     auto same=christ::render(120,45,0,s);
@@ -51,5 +55,30 @@ int main() {
     s.unicode=false;
     auto ascii=christ::render(80,24,0,s);
     check(std::all_of(ascii.cells.begin(),ascii.cells.end(),[](const auto& c){return c.glyph>0 && c.glyph<128;}),"ASCII fallback must contain only ASCII glyphs");
-    std::cout<<"PASS: deterministic geometry, 3D rotation, smooth motion, diff rendering, tiny sizes and glyph fallback\n";
+    christ::Settings timber;
+    timber.caption=false;
+    auto wood=christ::render(120,45,0,timber);
+    auto woodAgain=christ::render(120,45,0,timber);
+    check(wood.cells==woodAgain.cells,"timber material must render deterministically");
+    auto largeWood=christ::render(163,57,4,timber);
+    check(largeWood.cells==christ::render(163,57,4,timber).cells,
+          "parallel rendering must be deterministic across uneven row strips");
+    auto woodSide=christ::render(120,45,timber.period/4,timber);
+    check(silhouetteWidth(wood)>silhouetteWidth(woodSide)*2,"timber must be real 3D geometry");
+    auto revolution=christ::render(120,45,timber.period,timber);
+    int changed=0;
+    for(size_t i=0;i<wood.cells.size();++i)if(!(wood.cells[i]==revolution.cells[i]))++changed;
+    check(changed<6,"grain must stay attached to the wood through a full revolution");
+    auto nextWood=christ::render(120,45,1.0/60,timber);
+    long woodChange=0;
+    for(size_t i=0;i<wood.cells.size();++i) {
+        woodChange+=std::abs(wood.cells[i].ink.r-nextWood.cells[i].ink.r);
+        woodChange+=std::abs(wood.cells[i].bottom.r-nextWood.cells[i].bottom.r);
+    }
+    check(woodChange<static_cast<long>(wood.cells.size())*8,"timber motion must remain continuous");
+    check(std::none_of(wood.cells.begin(),wood.cells.end(),[](const auto& c){return c.glyph>=0x2801 && c.glyph<=0x28ff;}),"Calvary must not inherit ornamental dotwork");
+    timber.unicode=false;
+    auto woodAscii=christ::render(80,24,0,timber);
+    check(std::all_of(woodAscii.cells.begin(),woodAscii.cells.end(),[](const auto& c){return c.glyph>0 && c.glyph<128;}),"timber ASCII fallback must contain only ASCII glyphs");
+    std::cout<<"PASS: both renditions, deterministic geometry, attached wood grain, 3D rotation, smooth motion, openwork, diff rendering and fallbacks\n";
 }

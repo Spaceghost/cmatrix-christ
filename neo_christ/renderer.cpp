@@ -2,10 +2,13 @@
 // Original terminal renderer inspired by st3w/neo and cmatrix-christ.
 #include "renderer.hpp"
 #include "ornament.hpp"
+#include "timber.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <future>
 #include <sstream>
+#include <thread>
 
 namespace christ {
 namespace {
@@ -128,18 +131,130 @@ void sgr(std::string& out,RGB c,bool background,int colors) {
     else std::snprintf(b,sizeof(b),"\033[%d;2;%d;%d;%dm",background?48:38,c.r,c.g,c.b);
     out+=b;
 }
+void atmosphere(Frame& frame,double time,const Settings& s,const std::vector<uint8_t>& occupied,
+                double columnsPerUnit,double rowsPerUnit) {
+    int columns=frame.columns,rows=frame.rows;
+    if(s.rain)for(int col=0;col<columns;++col) {
+        uint32_t seed=hash(static_cast<uint32_t>(col)+39u);
+        if(seed%4==0)continue;
+        double speed=1.4+random(seed)*3.2,span=rows+14.0;
+        double head=std::fmod(time*speed+random(seed+1)*span,span);
+        double tail=5+random(seed+2)*rows*0.45;
+        for(int row=0;row<rows;++row) {
+            size_t i=static_cast<size_t>(row)*columns+col;
+            if(occupied[i])continue;
+            double age=head-row;
+            if(age<0 || age>tail)continue;
+            double x=(col+0.5-columns/2.0)/columnsPerUnit;
+            double y=(rows/2.0-row-0.5)/rowsPerUnit;
+            double quiet=0.20+0.80*clamp((std::hypot(x,y-0.35)-0.4)/1.5);
+            double energy=std::pow(1-age/tail,1.7)*quiet;
+            Cell& cell=frame.cells[i];
+            cell.glyph=rainGlyph(hash(seed+static_cast<uint32_t>(row)*97u+static_cast<uint32_t>(time*1.5)),s.unicode);
+            V rain=s.theme==Theme::ivory?V{0.19,0.29,0.31}:V{0.055,0.36,0.16};
+            cell.ink=encode(rain*(0.010+0.10*energy));
+            if(age<0.8)cell.ink=encode(V{0.40,0.66,0.48}*(0.06*quiet));
+        }
+    }
+    if(s.caption && columns>=54 && rows>=18) {
+        auto label=[&](int row,const std::string& text,RGB ink) {
+            int left=(columns-static_cast<int>(text.size()))/2;
+            for(size_t k=0;k<text.size();++k) {
+                Cell& c=frame.cells[static_cast<size_t>(row)*columns+left+k];
+                c.top=c.bottom={3,6,7};c.ink=ink;c.glyph=text[k];
+            }
+        };
+        label(rows-2,s.style==Style::calvary?"C A L V A R Y":"L U X   C R U C I S",{148,127,100});
+        label(rows-1,"space pause   +/- speed   c style   r rain   q quit",{56,75,70});
+    }
+}
+constexpr char32_t quadrantGlyphs[16]={U' ',U'▘',U'▝',U'▀',U'▖',U'▌',U'▞',U'▛',
+                                     U'▗',U'▚',U'▐',U'▜',U'▄',U'▙',U'▟',U'█'};
+Cell quadrants(const std::array<RGB,4>& colors) {
+    auto luminance=[](RGB c){return c.r*3+c.g*6+c.b;};
+    auto distance=[](RGB a,RGB b){int r=a.r-b.r,g=a.g-b.g,blue=a.b-b.b;return r*r+g*g+blue*blue;};
+    RGB low=colors[0],high=colors[0];
+    for(RGB c:colors) {
+        if(luminance(c)<luminance(low))low=c;
+        if(luminance(c)>luminance(high))high=c;
+    }
+    // A terminal quadrant character carries two colors for four subpixels.
+    // Cluster locally, retaining wood grain and twice the horizontal detail.
+    for(int pass=0;pass<3;++pass) {
+        RGB lo{},hi{};int nl=0,nh=0;
+        for(RGB c:colors) {
+            if(distance(c,high)<distance(c,low)) {hi.r+=c.r;hi.g+=c.g;hi.b+=c.b;++nh;}
+            else {lo.r+=c.r;lo.g+=c.g;lo.b+=c.b;++nl;}
+        }
+        if(nl)low={lo.r/nl,lo.g/nl,lo.b/nl};
+        if(nh)high={hi.r/nh,hi.g/nh,hi.b/nh};
+    }
+    if(luminance(low)>luminance(high))std::swap(low,high);
+    unsigned mask=0;
+    for(unsigned i=0;i<4;++i)if(distance(colors[i],high)<distance(colors[i],low))mask|=1u<<i;
+    return {low,low,high,quadrantGlyphs[mask]};
+}
+Frame renderTimber(int columns,int rows,double time,const Settings& s) {
+    Frame frame{columns,rows,std::vector<Cell>(static_cast<size_t>(columns)*rows),Style::calvary};
+    std::vector<uint8_t> occupied(frame.cells.size(),0);
+    double scale=std::min(rows*2/3.65,columns*0.5/s.aspect/2.8);
+    int aa=std::clamp(s.samples,1,2);
+    timber::Scene scene(time,s.period);
+    auto paintRows=[&](int first,int last) {
+        for(int row=first;row<last;++row)for(int col=0;col<columns;++col) {
+            size_t i=static_cast<size_t>(row)*columns+col;
+            std::array<RGB,4> colors;
+            for(int half=0;half<2;++half)for(int side=0;side<2;++side) {
+                V light;
+                for(int sy=0;sy<aa;++sy)for(int sx=0;sx<aa;++sx) {
+                    double x=(col+(side+(sx+0.5)/aa)/2-columns/2.0)*2*s.aspect/scale;
+                    double y=(rows-(row*2+half+(sy+0.5)/aa))/scale;
+                    auto sample=scene.sample(x,y);
+                    light=light+sample.light;
+                    if(sample.solid)occupied[i]=true;
+                }
+                colors[static_cast<size_t>(half*2+side)]=encode(light*(1.0/(aa*aa)));
+            }
+            frame.cells[i]=quadrants(colors);
+            if(!s.unicode) {
+                RGB average;
+                for(RGB c:colors) {average.r+=c.r;average.g+=c.g;average.b+=c.b;}
+                Cell& c=frame.cells[i];
+                c.ink={average.r/4,average.g/4,average.b/4};
+                const std::string ramp=" .,:;irsXA253hMHGS#9B&@";
+                int brightness=std::max({c.ink.r,c.ink.g,c.ink.b});
+                c.glyph=ramp[static_cast<size_t>(brightness)*(ramp.size()-1)/255];
+                c.top=c.bottom={3,6,7};
+            }
+        }
+    };
+    // Disjoint row strips preserve identical pixels while keeping large grids
+    // fluid. Byte occupancy avoids packed-bit writes racing across row borders.
+    unsigned workers=frame.cells.size()>=6000?
+        std::clamp(std::thread::hardware_concurrency(),1u,4u):1u;
+    std::vector<std::future<void>> jobs;
+    for(unsigned worker=1;worker<workers;++worker)
+        jobs.push_back(std::async(std::launch::async,paintRows,
+            rows*static_cast<int>(worker)/static_cast<int>(workers),
+            rows*static_cast<int>(worker+1)/static_cast<int>(workers)));
+    paintRows(0,rows/static_cast<int>(workers));
+    for(auto& job:jobs)job.get();
+    atmosphere(frame,time,s,occupied,scale/(2*s.aspect),scale/2);
+    return frame;
+}
 }
 
 Frame render(int columns,int rows,double time,const Settings& s) {
     if(columns<1 || rows<1)return {0,0,{}};
-    Frame frame{columns,rows,std::vector<Cell>(static_cast<size_t>(columns)*rows)};
+    if(s.style==Style::calvary)return renderTimber(columns,rows,time,s);
+    Frame frame{columns,rows,std::vector<Cell>(static_cast<size_t>(columns)*rows),Style::ornate};
     int aa=std::clamp(s.samples,1,2);
     Canvas canvas(columns,rows,aa,s.aspect);
     static const auto cross=ornament::cross(),halo=ornament::nimbus();
     Rotation rotation(time,s.period);
     for(const auto& wire:halo.wires)canvas.wire(wire.a,wire.b,wire.radius,wire.material,s.theme);
     for(const auto& wire:cross.wires)canvas.wire(rotation.world(wire.a),rotation.world(wire.b),wire.radius,wire.material,s.theme);
-    std::vector<bool> occupied(frame.cells.size(),false);
+    std::vector<uint8_t> occupied(frame.cells.size(),0);
     // Unicode Braille supplies eight addressable dots in each terminal cell.
     // Its open spaces are deliberate: no opaque rectangle fills the metalwork.
     constexpr int bits[4][2]={{0,3},{1,4},{2,5},{6,7}};
@@ -172,39 +287,7 @@ Frame render(int columns,int rows,double time,const Settings& s) {
             cell.glyph=s.unicode?0x2800+mask:" .:+oxO@#"[dots];
         } else cell.glyph=' ';
     }
-    if(s.rain)for(int col=0;col<columns;++col) {
-        uint32_t seed=hash(static_cast<uint32_t>(col)+39u);
-        if(seed%4==0)continue;
-        double speed=1.4+random(seed)*3.2,span=rows+14.0;
-        double head=std::fmod(time*speed+random(seed+1)*span,span);
-        double tail=5+random(seed+2)*rows*0.45;
-        for(int row=0;row<rows;++row) {
-            size_t i=static_cast<size_t>(row)*columns+col;
-            if(occupied[i])continue;
-            double age=head-row;
-            if(age<0 || age>tail)continue;
-            double x=(col+0.5-columns/2.0)/(canvas.sx/(2*aa));
-            double y=(rows/2.0-row-0.5)/(canvas.sy/(4*aa));
-            double quiet=0.20+0.80*clamp((std::hypot(x,y-0.35)-0.4)/1.5);
-            double energy=std::pow(1-age/tail,1.7)*quiet;
-            Cell& cell=frame.cells[i];
-            cell.glyph=rainGlyph(hash(seed+static_cast<uint32_t>(row)*97u+static_cast<uint32_t>(time*1.5)),s.unicode);
-            V rain=s.theme==Theme::ivory?V{0.19,0.29,0.31}:V{0.055,0.36,0.16};
-            cell.ink=encode(rain*(0.010+0.10*energy));
-            if(age<0.8)cell.ink=encode(V{0.40,0.66,0.48}*(0.06*quiet));
-        }
-    }
-    if(s.caption && columns>=54 && rows>=18) {
-        auto label=[&](int row,const std::string& text,RGB ink) {
-            int left=(columns-static_cast<int>(text.size()))/2;
-            for(size_t k=0;k<text.size();++k) {
-                Cell& c=frame.cells[static_cast<size_t>(row)*columns+left+k];
-                c.top=c.bottom={3,6,7};c.ink=ink;c.glyph=text[k];
-            }
-        };
-        label(rows-2,"L U X   C R U C I S",{148,127,84});
-        label(rows-1,"space pause   +/- speed   t palette   r rain   q quit",{56,75,70});
-    }
+    atmosphere(frame,time,s,occupied,canvas.sx/(2*aa),canvas.sy/(4*aa));
     return frame;
 }
 
@@ -244,7 +327,7 @@ std::string svg(const Frame& f, double aspect) {
     double w=16*aspect;
     std::ostringstream out;
     out<<"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\""<<f.columns*w<<"\" height=\""<<f.rows*16
-       <<"\" viewBox=\"0 0 "<<f.columns*w<<' '<<f.rows*16<<"\"><title>Lux Crucis — rotating filigree cross</title>"
+       <<"\" viewBox=\"0 0 "<<f.columns*w<<' '<<f.rows*16<<"\"><title>"<<(f.style==Style::calvary?"Calvary — rotating timber cross":"Lux Crucis — rotating filigree cross")<<"</title>"
        <<"<rect width=\"100%\" height=\"100%\" fill=\"#030607\"/>\n";
     for (int y=0;y<f.rows;++y) for (int x=0;x<f.columns;++x) {
         const Cell& c=f.cells[static_cast<size_t>(y)*f.columns+x];
@@ -252,6 +335,14 @@ std::string svg(const Frame& f, double aspect) {
         if (!c.glyph) {rect(y*16,8,c.top);rect(y*16+8,8,c.bottom);}
         else {
             rect(y*16,16,c.bottom);
+            int quadrants=-1;
+            for(int q=0;q<16;++q)if(c.glyph==quadrantGlyphs[q]) {quadrants=q;break;}
+            if(quadrants>=0) {
+                for(int q=0;q<4;++q)if(quadrants&(1<<q))
+                    out<<"<rect x=\""<<(x+(q%2)*0.5)*w<<"\" y=\""<<y*16+(q/2)*8
+                       <<"\" width=\""<<w/2<<"\" height=\"8\" fill=\""<<color(c.ink)<<"\"/>\n";
+                continue;
+            }
             if(c.glyph>=0x2800 && c.glyph<=0x28ff) {
                 // Export the actual dot mask without relying on a viewer's
                 // font fallback; the live terminal draws the same Braille cell.

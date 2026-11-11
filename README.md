@@ -1,10 +1,49 @@
 # cmatrix-christ
 
-A Christian cross in two terminal renditions: the original living-code cross,
-and **Lux Crucis**, a slowly rotating, ornate filigree cross inspired by
+A Christian cross in three terminal renditions: **Calvary**, a plain timber
+cross; **Lux Crucis**, ornate gold filigree; and the original living-code cross.
+The terminal animation and optional digital rain are inspired by
 [st3w/neo](https://github.com/st3w/neo).
 
-## Lux Crucis — the rotating rendition
+## Calvary — the timber rendition
+
+![Calvary: rough timber, natural grain, uneven cuts and a tilted inscription board](docs/calvary.png)
+
+[Watch a full 36-second rotation](docs/calvary.mp4) (30 fps preview rendered from
+the terminal cells at 240×80).
+
+A rough-hewn upright and crossbeam with natural brown wood, longitudinal grain,
+knots, drying checks, irregular cuts, a visible joint and a small tilted INRI
+board. The texture and painted lettering are attached to their 3D surfaces and
+turn with the wood. Matte light, a neutral background and a contact shadow keep
+the composition plain. Digital rain is off by default.
+
+Build and run on Linux or another POSIX system with a C++17 compiler and make:
+
+```sh
+make -f Makefile.christ neo
+./build/neo-christ --color truecolor
+```
+
+Calvary is the default. Use `--style calvary` to select it explicitly, `--rain`
+to add digital rain, or `--style ornate` for the filigree version. Press `c` to
+switch styles while running; the current rain setting is retained.
+
+Unicode quadrants give the timber four subpixels per terminal cell, with locally
+chosen foreground/background colors and four samples per subpixel at high quality.
+Large Calvary grids use up to four CPU threads.
+More terminal rows and columns expose finer grain and clearer lettering; the
+still above uses 300×100 cells. This remains terminal art rather than a photograph.
+
+This is an artistic reconstruction. The upright/crossbeam arrangement follows
+the general Roman practice described in the
+[Oxford Classical Dictionary](https://academic.oup.com/edited-volume/61673/chapter-abstract/548754477).
+[John 19:19–20](https://www.biblegateway.com/passage/?search=John%2019%3A19-20&version=KJV)
+describes the inscription; this rendition uses the traditional INRI shorthand.
+The exact dimensions, timber species, joinery and board shape are artistic choices,
+not claims that these details of Jesus's cross are known.
+
+## Lux Crucis — the filigree rendition
 
 ![Lux Crucis: open gold filigree, fleur-de-lis terminals, pearls and ruby settings](docs/neo-christ.png)
 
@@ -25,11 +64,10 @@ Light follows the curved gold and the facets of the stones; rotation follows a
 monotonic clock rather than frame counts. No GPU, image protocol or downloaded
 assets are required.
 
-Build and run on Linux or another POSIX system with a C++17 compiler and make:
+Choose the filigree rendition with:
 
 ```sh
-make -f Makefile.christ neo
-./build/neo-christ
+./build/neo-christ --style ornate
 ```
 
 Use a UTF-8 locale, a font with Braille and half-width Japanese kana, and a terminal with
@@ -42,7 +80,7 @@ and CPU. `--quality low --fps 30` reduces work on small machines.
 | --- | --- |
 | Space | Pause or resume |
 | `+` / `-` | Faster / slower rotation and rain |
-| `t` | Gold, Matrix green, or ivory palette |
+| `c` / `t` | Switch style / change the ornate palette |
 | `r` / `h` | Toggle rain / title and hints |
 | `q` / Escape | Exit and restore the terminal |
 
@@ -52,7 +90,7 @@ present each frame together. ASCII, 256-color and monochrome fallbacks are avail
 `NO_COLOR` selects monochrome ASCII; a non-UTF-8 locale selects ASCII automatically.
 
 ```sh
-./build/neo-christ --theme ivory --no-rain --quiet
+./build/neo-christ --style ornate --theme ivory --no-rain --quiet
 ./build/neo-christ --period 48 --color truecolor
 ./build/neo-christ --ascii --color 256
 ./build/neo-christ --export cross.svg --size 180x64 --at 4
@@ -60,8 +98,9 @@ present each frame together. ASCII, 256-color and monochrome fallbacks are avail
 ```
 
 SVG export uses the same rendered cells as the live animation and works without a
-TTY. Braille masks are exported as vector dots so their detail does not depend on
-the viewer's fonts. `--aspect` adjusts for cell width/height ratios other than 0.5.
+TTY. Quadrants and Braille masks are exported as vector shapes so their detail
+does not depend on the viewer's fonts. `--aspect` adjusts for cell width/height
+ratios other than 0.5.
 The rendering buffer is bounded by the terminal grid; no animation history is kept.
 For a smaller device, `--size 80x26 --quality low --fps 30` limits the drawing area.
 
@@ -74,7 +113,7 @@ CMatrix behavior remains available when `CMATRIX_CROSS` is unset.
 
 ![Code cross with Matrix rain](docs/cmatrix-christ.png)
 
-### Build both renditions
+### Build both programs
 
 Install C and C++17 compilers, make, pkg-config and the wide-character ncurses development
 package. The optional smoke tests also require Python 3.
@@ -99,8 +138,8 @@ The capture above was rendered separately at 1440×960.
 
 `make -f Makefile.christ test` exercises both programs in real PTYs, including
 pause, resize, overloaded rendering, clean exits, suspend/resume, color and locale
-fallbacks. Renderer checks cover deterministic frames, depth, motion continuity
-and open spaces in the filigree.
+fallbacks. Renderer checks cover deterministic frames, depth, motion continuity,
+open spaces in the filigree, and wood grain remaining attached through a full turn.
 Build outputs default to `build/`; set `BUILD_DIR` to use another directory.
 CMake also builds both programs on POSIX systems; upstream Autotools builds the
 original CMatrix program.
