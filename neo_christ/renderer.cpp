@@ -3,6 +3,7 @@
 #include "renderer.hpp"
 #include "ornament.hpp"
 #include "timber.hpp"
+#include "gothic.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -164,7 +165,7 @@ void atmosphere(Frame& frame,double time,const Settings& s,const std::vector<uin
                 c.top=c.bottom={3,6,7};c.ink=ink;c.glyph=text[k];
             }
         };
-        label(rows-2,s.style==Style::calvary?"C A L V A R Y":"L U X   C R U C I S",{148,127,100});
+        label(rows-2,s.style==Style::gothic?"V E S P E R":s.style==Style::calvary?"C A L V A R Y":"L U X   C R U C I S",{148,127,100});
         label(rows-1,"space pause   +/- speed   c style   r rain   q quit",{56,75,70});
     }
 }
@@ -194,24 +195,33 @@ Cell quadrants(const std::array<RGB,4>& colors) {
     for(unsigned i=0;i<4;++i)if(distance(colors[i],high)<distance(colors[i],low))mask|=1u<<i;
     return {low,low,high,quadrantGlyphs[mask]};
 }
-Frame renderTimber(int columns,int rows,double time,const Settings& s) {
-    Frame frame{columns,rows,std::vector<Cell>(static_cast<size_t>(columns)*rows),Style::calvary};
+Frame renderSolid(int columns,int rows,double time,const Settings& s) {
+    Frame frame{columns,rows,std::vector<Cell>(static_cast<size_t>(columns)*rows),s.style};
     std::vector<uint8_t> occupied(frame.cells.size(),0);
-    double scale=std::min(rows*2/3.65,columns*0.5/s.aspect/2.8);
+    bool devotional=s.style==Style::gothic;
+    double scale=std::min(rows*2/(devotional?4.9:3.65),columns*0.5/s.aspect/(devotional?3.8:2.8));
     int aa=std::clamp(s.samples,1,2);
     timber::Scene scene(time,s.period);
-    auto paintRows=[&](int first,int last) {
-        for(int row=first;row<last;++row)for(int col=0;col<columns;++col) {
+    gothic::Scene sculpture(time,s.period);
+    auto paintRows=[&](int first,int stride) {
+        for(int row=first;row<rows;row+=stride)for(int col=0;col<columns;++col) {
             size_t i=static_cast<size_t>(row)*columns+col;
             std::array<RGB,4> colors;
             for(int half=0;half<2;++half)for(int side=0;side<2;++side) {
                 V light;
+                int empty=0;
                 for(int sy=0;sy<aa;++sy)for(int sx=0;sx<aa;++sx) {
                     double x=(col+(side+(sx+0.5)/aa)/2-columns/2.0)*2*s.aspect/scale;
                     double y=(rows-(row*2+half+(sy+0.5)/aa))/scale;
-                    auto sample=scene.sample(x,y);
+                    auto sample=devotional?sculpture.sample(x,y):scene.sample(x,y);
                     light=light+sample.light;
                     if(sample.solid)occupied[i]=true;
+                    else ++empty;
+                }
+                if(devotional && empty) {
+                    double x=(col+(side+0.5)/2-columns/2.0)*2*s.aspect/scale;
+                    double y=(rows-(row*2+half+0.5))/scale;
+                    light=light+sculpture.backdrop(x,y)*empty;
                 }
                 colors[static_cast<size_t>(half*2+side)]=encode(light*(1.0/(aa*aa)));
             }
@@ -228,16 +238,15 @@ Frame renderTimber(int columns,int rows,double time,const Settings& s) {
             }
         }
     };
-    // Disjoint row strips preserve identical pixels while keeping large grids
-    // fluid. Byte occupancy avoids packed-bit writes racing across row borders.
+    // Interleaved rows spread the carved crossbar's heavier work evenly.
+    // Byte occupancy avoids packed-bit writes racing across row borders.
     unsigned workers=frame.cells.size()>=6000?
         std::clamp(std::thread::hardware_concurrency(),1u,4u):1u;
     std::vector<std::future<void>> jobs;
     for(unsigned worker=1;worker<workers;++worker)
         jobs.push_back(std::async(std::launch::async,paintRows,
-            rows*static_cast<int>(worker)/static_cast<int>(workers),
-            rows*static_cast<int>(worker+1)/static_cast<int>(workers)));
-    paintRows(0,rows/static_cast<int>(workers));
+            static_cast<int>(worker),static_cast<int>(workers)));
+    paintRows(0,static_cast<int>(workers));
     for(auto& job:jobs)job.get();
     atmosphere(frame,time,s,occupied,scale/(2*s.aspect),scale/2);
     return frame;
@@ -246,7 +255,7 @@ Frame renderTimber(int columns,int rows,double time,const Settings& s) {
 
 Frame render(int columns,int rows,double time,const Settings& s) {
     if(columns<1 || rows<1)return {0,0,{}};
-    if(s.style==Style::calvary)return renderTimber(columns,rows,time,s);
+    if(s.style!=Style::ornate)return renderSolid(columns,rows,time,s);
     Frame frame{columns,rows,std::vector<Cell>(static_cast<size_t>(columns)*rows),Style::ornate};
     int aa=std::clamp(s.samples,1,2);
     Canvas canvas(columns,rows,aa,s.aspect);
@@ -327,7 +336,7 @@ std::string svg(const Frame& f, double aspect) {
     double w=16*aspect;
     std::ostringstream out;
     out<<"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\""<<f.columns*w<<"\" height=\""<<f.rows*16
-       <<"\" viewBox=\"0 0 "<<f.columns*w<<' '<<f.rows*16<<"\"><title>"<<(f.style==Style::calvary?"Calvary — rotating timber cross":"Lux Crucis — rotating filigree cross")<<"</title>"
+       <<"\" viewBox=\"0 0 "<<f.columns*w<<' '<<f.rows*16<<"\"><title>"<<(f.style==Style::gothic?"Vesper — rotating Gothic cross":f.style==Style::calvary?"Calvary — rotating timber cross":"Lux Crucis — rotating filigree cross")<<"</title>"
        <<"<rect width=\"100%\" height=\"100%\" fill=\"#030607\"/>\n";
     for (int y=0;y<f.rows;++y) for (int x=0;x<f.columns;++x) {
         const Cell& c=f.cells[static_cast<size_t>(y)*f.columns+x];

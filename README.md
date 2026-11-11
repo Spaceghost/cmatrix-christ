@@ -1,9 +1,44 @@
 # cmatrix-christ
 
-A Christian cross in three terminal renditions: **Calvary**, a plain timber
-cross; **Lux Crucis**, ornate gold filigree; and the original living-code cross.
+A Christian cross in four terminal renditions: **Vesper**, carved Gothic metal;
+**Calvary**, plain timber; **Lux Crucis**, gold filigree; and the original
+living-code cross.
 The terminal animation and optional digital rain are inspired by
 [st3w/neo](https://github.com/st3w/neo).
+
+## Vesper — Gothic devotional
+
+![Vesper: blackened metal, silver carving, garnet and candlelit cathedral arches](docs/vesper.png)
+
+[Watch a complete 48-second turn](docs/vesper.mp4) — a 30 fps preview rendered
+from the terminal cells at 240×80 with `--quiet`. The still above uses 320×112 cells.
+
+Blackened metal with silver edges, carved vine borders, five pierced lancet
+openings, pointed fleur-de-lis finials and a garnet cabochon in a raised rosette.
+Cool window light and warm candlelight move across the beveled surfaces as the
+cross turns. Three shadowed cathedral arches, two candles and a soft pool of light
+give the sculpture a quiet setting. The scene uses procedural geometry and light;
+there are no downloaded images or flat cross sprites.
+
+Vesper is the default:
+
+```sh
+make -f Makefile.christ neo
+./build/neo-christ --style gothic --color truecolor
+```
+
+The turn lasts 48 seconds, lingering on the carved faces and passing the edges
+with continuous motion. The carving, openings, stone and rear surfaces all turn
+with the object. The candle flames move gently, and the complete scene loops.
+Digital rain is off. `--period 60` makes the turn slower; `--quiet` hides the title
+and controls. `c` cycles Gothic → filigree → timber while retaining the current
+speed and rain settings.
+
+Unicode quadrants carry four subpixels per terminal cell. High quality uses four
+samples per subpixel, and large solid scenes share work across up to four CPU
+threads. Use a true-color UTF-8 terminal and smaller terminal text to expose finer
+carving. The live frame limit is 60 fps; actual throughput depends on the grid,
+CPU and terminal. `--quality low --fps 30` reduces the rendering work.
 
 ## Calvary — the timber rendition
 
@@ -22,12 +57,11 @@ Build and run on Linux or another POSIX system with a C++17 compiler and make:
 
 ```sh
 make -f Makefile.christ neo
-./build/neo-christ --color truecolor
+./build/neo-christ --style calvary --color truecolor
 ```
 
-Calvary is the default. Use `--style calvary` to select it explicitly, `--rain`
-to add digital rain, or `--style ornate` for the filigree version. Press `c` to
-switch styles while running; the current rain setting is retained.
+Use `--style calvary` for timber, `--rain` to add digital rain, or `--style ornate`
+for the filigree version. Both earlier styles retain their 36-second default turn.
 
 Unicode quadrants give the timber four subpixels per terminal cell, with locally
 chosen foreground/background colors and four samples per subpixel at high quality.
@@ -70,7 +104,7 @@ Choose the filigree rendition with:
 ./build/neo-christ --style ornate
 ```
 
-Use a UTF-8 locale, a font with Braille and half-width Japanese kana, and a terminal with
+Use a UTF-8 locale, a font with quadrants, Braille and half-width Japanese kana, and a terminal with
 true-color support. Color support is selected from `COLORTERM` and `TERM`;
 `--color truecolor` overrides detection. Smaller terminal text gives more detail.
 The default limit is 60 fps; actual throughput depends on the terminal, grid size
@@ -139,7 +173,8 @@ The capture above was rendered separately at 1440×960.
 `make -f Makefile.christ test` exercises both programs in real PTYs, including
 pause, resize, overloaded rendering, clean exits, suspend/resume, color and locale
 fallbacks. Renderer checks cover deterministic frames, depth, motion continuity,
-open spaces in the filigree, and wood grain remaining attached through a full turn.
+Gothic openings and complete loops, open spaces in the filigree, and wood grain
+remaining attached through a full turn.
 Build outputs default to `build/`; set `BUILD_DIR` to use another directory.
 CMake also builds both programs on POSIX systems; upstream Autotools builds the
 original CMatrix program.

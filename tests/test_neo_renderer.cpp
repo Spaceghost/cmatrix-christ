@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "renderer.hpp"
+#include "gothic.hpp"
 #include <algorithm>
 #include <cmath>
 #include <bitset>
@@ -56,6 +57,7 @@ int main() {
     auto ascii=christ::render(80,24,0,s);
     check(std::all_of(ascii.cells.begin(),ascii.cells.end(),[](const auto& c){return c.glyph>0 && c.glyph<128;}),"ASCII fallback must contain only ASCII glyphs");
     christ::Settings timber;
+    timber.style=christ::Style::calvary;
     timber.caption=false;
     auto wood=christ::render(120,45,0,timber);
     auto woodAgain=christ::render(120,45,0,timber);
@@ -80,5 +82,32 @@ int main() {
     timber.unicode=false;
     auto woodAscii=christ::render(80,24,0,timber);
     check(std::all_of(woodAscii.cells.begin(),woodAscii.cells.end(),[](const auto& c){return c.glyph>0 && c.glyph<128;}),"timber ASCII fallback must contain only ASCII glyphs");
-    std::cout<<"PASS: both renditions, deterministic geometry, attached wood grain, 3D rotation, smooth motion, openwork, diff rendering and fallbacks\n";
+    christ::Settings devotional;
+    devotional.caption=false;
+    auto gothic=christ::render(163,57,0,devotional);
+    check(gothic.cells==christ::render(163,57,0,devotional).cells,
+          "Gothic carving and candlelight must be deterministic across worker rows");
+    auto gothicLoop=christ::render(163,57,devotional.period,devotional);
+    int loopChange=0;
+    for(size_t i=0;i<gothic.cells.size();++i)if(!(gothic.cells[i]==gothicLoop.cells[i]))++loopChange;
+    check(loopChange<8,"carving, candlelight and motion must close the full loop");
+    auto gothicNext=christ::render(163,57,1.0/60,devotional);
+    long gothicChange=0;
+    for(size_t i=0;i<gothic.cells.size();++i) {
+        gothicChange+=std::abs(gothic.cells[i].ink.r-gothicNext.cells[i].ink.r);
+        gothicChange+=std::abs(gothic.cells[i].bottom.r-gothicNext.cells[i].bottom.r);
+    }
+    check(gothicChange<static_cast<long>(gothic.cells.size())*8,"Gothic motion must remain continuous");
+    christ::gothic::Scene sculpture(0,devotional.period);
+    christ::gothic::Rotation pose(0,devotional.period);
+    for(auto hole:{christ::ornament::V{0,-0.23,0}, {0,-0.97,0}, {0,0.99,0}, {-0.65,0.52,0}, {0.65,0.52,0}}) {
+        auto world=pose.world(hole);
+        check(!sculpture.sample(world.x,world.y).solid,"Gothic lancets must be actual openings through the metal");
+    }
+    auto center=pose.world({0,0.52,0});
+    check(sculpture.sample(center.x,center.y).solid,"central rosette must have solid depth");
+    devotional.unicode=false;
+    auto gothicAscii=christ::render(80,24,0,devotional);
+    check(std::all_of(gothicAscii.cells.begin(),gothicAscii.cells.end(),[](const auto& c){return c.glyph>0 && c.glyph<128;}),"Gothic ASCII fallback must contain only ASCII glyphs");
+    std::cout<<"PASS: all styles, deterministic geometry, carved openings, complete loops, smooth motion, diff rendering and fallbacks\n";
 }

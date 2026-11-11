@@ -37,12 +37,14 @@ with tempfile.TemporaryDirectory(prefix='neo-christ-') as directory:
         cols, rows = map(int, size.split('x'))
         assert float(root.attrib['width']) == cols * 8
         assert float(root.attrib['height']) == rows * 16
-        assert len(root.findall('{http://www.w3.org/2000/svg}rect')) > cols * rows, 'timber quadrants must export as visible rectangles'
-        assert not root.findall('{http://www.w3.org/2000/svg}circle'), 'Calvary must not inherit filigree'
+        assert len(root.findall('{http://www.w3.org/2000/svg}rect')) > cols * rows, 'metal quadrants must export as visible rectangles'
+        assert 'Vesper' in root.find('{http://www.w3.org/2000/svg}title').text, 'Gothic must be the new default'
+        assert not root.findall('{http://www.w3.org/2000/svg}circle'), 'Gothic must use solid carved surfaces'
     path = Path(directory) / 'ornate.svg'
     assert command('--export', str(path), '--style', 'ornate').returncode == 0
     assert ET.parse(path).getroot().findall('{http://www.w3.org/2000/svg}circle'), 'filigree must remain available without Braille fonts'
-    for args, rain in [(('--style', 'calvary'), False), (('--style', 'calvary', '--rain'), True),
+    for args, rain in [(('--style', 'gothic'), False), (('--rain', '--style', 'gothic'), True),
+                       (('--style', 'calvary'), False), (('--style', 'calvary', '--rain'), True),
                        (('--style', 'ornate'), True), (('--no-rain', '--style', 'ornate'), False)]:
         assert command('--export', str(path), *args).returncode == 0
         assert any('\uff66' <= c <= '\uff9d' for c in path.read_text()) == rain, 'rain defaults/override incorrect'
@@ -97,12 +99,17 @@ session = Session()
 try:
     session.read(0.4)
     assert b'\x1b[38;2;' in session.output, 'true color missing'
-    assert any('\u2580' <= c <= '\u259f' for c in session.output.decode('utf-8')), 'timber quadrant rendering missing'
+    assert any('\u2580' <= c <= '\u259f' for c in session.output.decode('utf-8')), 'carved metal quadrant rendering missing'
     session.send(b' ')
     session.read(0.2)
     assert not session.read(0.2), 'paused animation should remain still'
     session.send(b'c')
     assert any('\u2801' <= c <= '\u28ff' for c in session.read(0.25).decode('utf-8')), 'style control must switch to ornate while paused'
+    session.send(b'c')
+    timber_frame = session.read(0.25).decode('utf-8')
+    assert any('\u2580' <= c <= '\u259f' for c in timber_frame), 'style control must retain the solid timber rendition'
+    session.send(b'c')
+    assert b'V E S P E R' in session.read(0.25), 'style control must return to Gothic'
     session.send(b'trh')
     assert session.read(0.25), 'controls should redraw a paused scene'
     session.resize(1, 1)

@@ -70,22 +70,23 @@ struct Options {
     bool fixedSize=false, first=false;
     std::string output;
 };
-const char* help=R"(neo-christ — Calvary / Lux Crucis
-A slowly rotating timber cross, with the ornate filigree rendition available.
+const char* help=R"(neo-christ — Vesper
+A carved Gothic cross in candlelight, with timber and gold filigree renditions.
 
 Usage: neo-christ [options]
        neo-christ --first-rendition
        neo-christ --export frame.svg --size 160x54 --at 6
 
-  --style calvary|ornate     Rough timber (default), or gold filigree
+  --style gothic|calvary|ornate
+                             Carved dark metal (default), timber, or filigree
   --theme gold|matrix|ivory   Ornate palette; timber retains natural wood colors
-  --period SECONDS           Seconds per revolution (4–600; default 36)
+  --period SECONDS           Seconds per revolution (4–600; Gothic 48, others 36)
   --fps N                    Frame limit (1–120; default 60)
   --quality high|low         4 or 1 samples per pixel/dot
   --color auto|truecolor|256|mono
   --ascii                    Use ASCII shading and rain
   --aspect RATIO             Cell width / height (0.25–1; default 0.5)
-  --rain / --no-rain         Digital rain (off for Calvary, on for ornate)
+  --rain / --no-rain         Digital rain (on by default only for ornate)
   --quiet                    Hide title and keyboard hints
   --first-rendition          Run the original cmatrix-christ code cross
   --export PATH.svg          Export one actual rendered frame; no TTY needed
@@ -97,7 +98,7 @@ Usage: neo-christ [options]
 
 Keys: space pause · +/- speed · c style · t ornate palette · r rain · h hints · q/Esc quit
 Ctrl-C exits cleanly. Ctrl-Z suspends and restores the terminal until resumed.
-Use a UTF-8 terminal with Braille and half-width Japanese kana support. Non-UTF-8
+Use a UTF-8 terminal with quadrant, Braille and half-width kana support. Non-UTF-8
 locales and NO_COLOR automatically use ASCII. No GPU or font download needed.
 
 Inspired by st3w/neo and Spaceghost/cmatrix-christ. GPL-3.0-or-later.
@@ -117,7 +118,7 @@ int integer(const std::string& text,int low,int high,const std::string& option) 
 }
 Options parse(int argc,char** argv) {
     Options o;
-    bool rainSpecified=false;
+    bool rainSpecified=false,periodSpecified=false;
     std::setlocale(LC_CTYPE,"");
     std::string encoding=nl_langinfo(CODESET);
     o.settings.unicode=(encoding=="UTF-8" || encoding=="UTF8");
@@ -125,8 +126,8 @@ Options parse(int argc,char** argv) {
         std::string arg=argv[i];
         auto value=[&](){if(i+1>=argc)throw std::runtime_error(arg+": missing value");return std::string(argv[++i]);};
         if (arg=="--help" || arg=="-h") {std::cout<<help;std::exit(0);}
-        else if (arg=="--version") {std::cout<<"neo-christ 0.3.0 (Calvary / Lux Crucis)\n";std::exit(0);}
-        else if (arg=="--period") o.settings.period=number(value(),4,600,arg);
+        else if (arg=="--version") {std::cout<<"neo-christ 0.4.0 (Vesper — Gothic devotional)\n";std::exit(0);}
+        else if (arg=="--period") {o.settings.period=number(value(),4,600,arg);periodSpecified=true;}
         else if (arg=="--fps") o.fps=integer(value(),1,120,arg);
         else if (arg=="--frames") o.frames=integer(value(),1,10000000,arg);
         else if (arg=="--at") o.at=number(value(),0,86400,arg);
@@ -144,9 +145,10 @@ Options parse(int argc,char** argv) {
             o.rows=integer(size.substr(x+1),4,180,arg);o.fixedSize=true;
         } else if (arg=="--style") {
             std::string name=value();
-            if(name=="calvary")o.settings.style=christ::Style::calvary;
+            if(name=="gothic")o.settings.style=christ::Style::gothic;
+            else if(name=="calvary")o.settings.style=christ::Style::calvary;
             else if(name=="ornate")o.settings.style=christ::Style::ornate;
-            else throw std::runtime_error("--style: choose calvary or ornate");
+            else throw std::runtime_error("--style: choose gothic, calvary or ornate");
         } else if (arg=="--theme") {
             std::string name=value();
             if(name=="gold")o.settings.theme=christ::Theme::gold;
@@ -168,6 +170,7 @@ Options parse(int argc,char** argv) {
         } else throw std::runtime_error("unknown option: "+arg+" (see --help)");
     }
     if(!rainSpecified)o.settings.rain=o.settings.style==christ::Style::ornate;
+    if(!periodSpecified && o.settings.style!=christ::Style::gothic)o.settings.period=36;
     if(o.colors<0) {
         std::string color=std::getenv("COLORTERM")?std::getenv("COLORTERM"):"";
         std::string term=std::getenv("TERM")?std::getenv("TERM"):"";
@@ -253,7 +256,11 @@ int run(Options o) {
                     else if(c=='+' || c=='=')speed=std::min(4.0,speed*1.2);
                     else if(c=='-')speed=std::max(0.125,speed/1.2);
                     else if(c=='r') {o.settings.rain=!o.settings.rain;dirty=true;}
-                    else if(c=='c') {o.settings.style=o.settings.style==christ::Style::calvary?christ::Style::ornate:christ::Style::calvary;dirty=true;}
+                    else if(c=='c') {
+                        o.settings.style=o.settings.style==christ::Style::gothic?christ::Style::ornate:
+                            o.settings.style==christ::Style::ornate?christ::Style::calvary:christ::Style::gothic;
+                        dirty=true;
+                    }
                     else if(c=='h') {o.settings.caption=!o.settings.caption;dirty=true;}
                     else if(c=='t') {o.settings.theme=static_cast<christ::Theme>((static_cast<int>(o.settings.theme)+1)%3);dirty=true;}
                 }

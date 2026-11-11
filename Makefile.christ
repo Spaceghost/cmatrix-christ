@@ -19,11 +19,11 @@ $(BUILD_DIR)/cmatrix: cmatrix.c
 	mkdir -p $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(CURSES_CFLAGS) $< $(LDFLAGS) $(CURSES_LIBS) -lm -o $@
 
-$(BUILD_DIR)/neo-christ: neo_christ/main.cpp neo_christ/renderer.cpp neo_christ/renderer.hpp neo_christ/ornament.hpp neo_christ/timber.hpp
+$(BUILD_DIR)/neo-christ: neo_christ/main.cpp neo_christ/renderer.cpp neo_christ/renderer.hpp neo_christ/ornament.hpp neo_christ/timber.hpp neo_christ/gothic.hpp
 	mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -std=c++17 -pthread neo_christ/main.cpp neo_christ/renderer.cpp $(LDFLAGS) -o $@
 
-$(BUILD_DIR)/test-neo-renderer: tests/test_neo_renderer.cpp neo_christ/renderer.cpp neo_christ/renderer.hpp neo_christ/ornament.hpp neo_christ/timber.hpp
+$(BUILD_DIR)/test-neo-renderer: tests/test_neo_renderer.cpp neo_christ/renderer.cpp neo_christ/renderer.hpp neo_christ/ornament.hpp neo_christ/timber.hpp neo_christ/gothic.hpp
 	mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -std=c++17 -pthread -Ineo_christ tests/test_neo_renderer.cpp neo_christ/renderer.cpp $(LDFLAGS) -o $@
 

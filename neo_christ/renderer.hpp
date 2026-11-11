@@ -17,11 +17,11 @@ struct Cell {
     }
 };
 enum class Theme { gold, matrix, ivory };
-enum class Style { calvary, ornate };
+enum class Style { gothic, calvary, ornate };
 struct Settings {
-    Style style = Style::calvary;
+    Style style = Style::gothic;
     Theme theme = Theme::gold;
-    double period = 36.0;
+    double period = 48.0;
     double aspect = 0.5; // Terminal cell width / height.
     bool rain = false;
     bool unicode = true;
